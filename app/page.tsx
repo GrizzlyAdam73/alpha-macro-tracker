@@ -72,7 +72,7 @@ function getPercent(entries: Entries, iso: string): { hasEntry: boolean; percent
 }
 
 function computeTrueStreak(entries: Entries, endISO: string): number {
-  // “True streak” = consecutive days at/above 85% ending on endISO
+  // True streak = consecutive 85%+ days ending on endISO
   let streak = 0
   let cursor = endISO
   while (true) {
@@ -99,13 +99,13 @@ function ProgressChart({ points }: { points: { label: string; percent: number; i
     .join(" ")
 
   return (
-    <div style={{ border: "1px solid #eee", borderRadius: 12, padding: 12, background: "#fff" }}>
+    <div style={{ border: "1px solid #eee", borderRadius: 12, padding: 12, background: "#fff", color: "#111827" }}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
         <div>
-          <div style={{ fontSize: 12, color: "#666" }}>Progress (last {n} days)</div>
+          <div style={{ fontSize: 12, color: "#6b7280" }}>Progress (last {n} days)</div>
           <div style={{ fontSize: 16, fontWeight: 800 }}>Daily Adherence %</div>
         </div>
-        <div style={{ fontSize: 12, color: "#666" }}>
+        <div style={{ fontSize: 12, color: "#6b7280" }}>
           Rule: <strong>{RULE_85}%+</strong>
         </div>
       </div>
@@ -137,8 +137,7 @@ function ProgressChart({ points }: { points: { label: string; percent: number; i
           })}
         </svg>
 
-        {/* labels */}
-        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#666" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#6b7280" }}>
           <span>{points[0]?.label}</span>
           <span>{points[Math.floor((n - 1) / 2)]?.label}</span>
           <span>{points[n - 1]?.label}</span>
@@ -150,8 +149,8 @@ function ProgressChart({ points }: { points: { label: string; percent: number; i
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div style={{ border: "1px solid #eee", borderRadius: 12, padding: 12, minWidth: 160, background: "#fff" }}>
-      <div style={{ fontSize: 12, color: "#666" }}>{label}</div>
+    <div style={{ border: "1px solid #eee", borderRadius: 12, padding: 12, minWidth: 160, background: "#fff", color: "#111827" }}>
+      <div style={{ fontSize: 12, color: "#6b7280" }}>{label}</div>
       <div style={{ fontSize: 20, fontWeight: 800 }}>{value}</div>
     </div>
   )
@@ -175,7 +174,6 @@ export default function Home() {
   const [entries, setEntries] = useState<Entries>({})
   const [selectedDate, setSelectedDate] = useState(today)
 
-  // Load
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY)
     if (saved) {
@@ -185,7 +183,6 @@ export default function Home() {
     }
   }, [])
 
-  // Save
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(entries))
   }, [entries])
@@ -205,7 +202,6 @@ export default function Home() {
     setEntries((prev) => ({ ...prev, [selectedDate]: blankChecks() }))
   }
 
-  // Weekly window: last 7 days ending on selectedDate
   const weekDays = useMemo(() => {
     return Array.from({ length: 7 }).map((_, i) => {
       const iso = addDays(selectedDate, -((6 - i) as number))
@@ -223,7 +219,6 @@ export default function Home() {
 
   const trueStreak = useMemo(() => computeTrueStreak(entries, today), [entries, today])
 
-  // Progress chart: last 14 days ending today
   const chartPoints = useMemo(() => {
     const pts = []
     for (let i = 13; i >= 0; i--) {
@@ -236,13 +231,12 @@ export default function Home() {
   }, [entries, today])
 
   return (
-    <div style={{ padding: 18, maxWidth: 920, margin: "0 auto", fontFamily: "system-ui" }}>
+    <div style={{ padding: 18, maxWidth: 920, margin: "0 auto", fontFamily: "system-ui", color: "#111827" }}>
       <h1 style={{ fontSize: 28, marginBottom: 4 }}>🔥 Alpha Macro Tracker</h1>
-      <p style={{ marginTop: 0, color: "#666" }}>
+      <p style={{ marginTop: 0, color: "#6b7280" }}>
         Consistency beats intensity • Protein is non-negotiable • Increase movement first
       </p>
 
-      {/* Date bar */}
       <div
         style={{
           display: "flex",
@@ -255,23 +249,20 @@ export default function Home() {
           padding: 12,
           marginTop: 12,
           background: "#fff",
+          color: "#111827",
         }}
       >
         <div>
-          <div style={{ fontSize: 12, color: "#666" }}>Selected date</div>
+          <div style={{ fontSize: 12, color: "#6b7280" }}>Selected date</div>
           <div style={{ fontSize: 18, fontWeight: 800 }}>{selectedDate}</div>
-          <div style={{ fontSize: 12, color: "#666" }}>{formatShort(selectedDate)}</div>
+          <div style={{ fontSize: 12, color: "#6b7280" }}>{formatShort(selectedDate)}</div>
         </div>
 
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <button onClick={() => setSelectedDate(addDays(selectedDate, -1))} style={btn()}>
             ◀
           </button>
-          <button
-            onClick={() => setSelectedDate(today)}
-            style={btn(selectedDate === today)}
-            title="Jump to today"
-          >
+          <button onClick={() => setSelectedDate(today)} style={btn(selectedDate === today)} title="Jump to today">
             Today
           </button>
           <button onClick={() => setSelectedDate(addDays(selectedDate, 1))} style={btn()}>
@@ -287,6 +278,8 @@ export default function Home() {
               borderRadius: 10,
               border: "1px solid #ddd",
               fontSize: 14,
+              color: "#111827",
+              background: "#fff",
             }}
           />
 
@@ -296,7 +289,6 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Top stats */}
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 12 }}>
         <Stat label="Today completion" value={`${stats.percent}%`} />
         <Stat label="True streak (85%+)" value={`${trueStreak} day${trueStreak === 1 ? "" : "s"}`} />
@@ -304,16 +296,7 @@ export default function Home() {
         <Stat label="85%+ days (week)" value={`${weekly.days85}/7`} />
       </div>
 
-      {/* Daily completion */}
-      <div
-        style={{
-          margin: "14px 0",
-          padding: 14,
-          border: "1px solid #ddd",
-          borderRadius: 12,
-          background: "#fff",
-        }}
-      >
+      <div style={{ margin: "14px 0", padding: 14, border: "1px solid #ddd", borderRadius: 12, background: "#fff", color: "#111827" }}>
         <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
           <strong>
             Daily completion: {stats.done}/{stats.total} ({stats.percent}%)
@@ -324,6 +307,7 @@ export default function Home() {
               borderRadius: 999,
               fontSize: 12,
               background: onTrack ? "#d1fae5" : "#fef3c7",
+              color: "#111827",
             }}
             title="85% rule"
           >
@@ -343,10 +327,8 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Progress chart */}
       <ProgressChart points={chartPoints} />
 
-      {/* Checklist */}
       <div style={{ marginTop: 14 }}>
         {CATEGORIES.map((cat, cIndex) => (
           <div
@@ -357,6 +339,7 @@ export default function Home() {
               border: "1px solid #eee",
               borderRadius: 12,
               background: "#fff",
+              color: "#111827",
             }}
           >
             <h3 style={{ margin: "0 0 10px 0" }}>{cat.title}</h3>
@@ -369,7 +352,7 @@ export default function Home() {
                     onChange={() => toggle(cIndex, iIndex)}
                     style={{ marginTop: 3 }}
                   />
-                  <span>{item}</span>
+                  <span style={{ color: "#111827" }}>{item}</span>
                 </label>
               ))}
             </div>
@@ -377,19 +360,10 @@ export default function Home() {
         ))}
       </div>
 
-      {/* Weekly dashboard */}
-      <div
-        style={{
-          marginTop: 18,
-          padding: 14,
-          border: "1px solid #ddd",
-          borderRadius: 12,
-          background: "#fff",
-        }}
-      >
+      <div style={{ marginTop: 18, padding: 14, border: "1px solid #ddd", borderRadius: 12, background: "#fff", color: "#111827" }}>
         <h2 style={{ margin: "0 0 10px 0" }}>📊 Weekly Dashboard (last 7 days)</h2>
+        <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 8 }}>Tap a day to view it</div>
 
-        <div style={{ fontSize: 12, color: "#666", marginBottom: 8 }}>Tap a day to view it</div>
         <div style={{ display: "grid", gap: 8 }}>
           {weekDays.map((d) => (
             <div
@@ -408,7 +382,7 @@ export default function Home() {
             >
               <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
                 <strong style={{ minWidth: 110 }}>{formatShort(d.iso)}</strong>
-                <span style={{ fontSize: 12, color: "#666" }}>{d.iso}</span>
+                <span style={{ fontSize: 12, color: "#6b7280" }}>{d.iso}</span>
               </div>
               <span
                 style={{
@@ -416,6 +390,7 @@ export default function Home() {
                   borderRadius: 999,
                   fontSize: 12,
                   background: !d.hasEntry ? "#f1f5f9" : d.percent >= RULE_85 ? "#d1fae5" : "#fef3c7",
+                  color: "#111827",
                 }}
               >
                 {!d.hasEntry ? "Not logged" : `${d.percent}%`}
@@ -425,7 +400,7 @@ export default function Home() {
         </div>
       </div>
 
-      <div style={{ marginTop: 16, fontSize: 12, color: "#666" }}>
+      <div style={{ marginTop: 16, fontSize: 12, color: "#6b7280" }}>
         Data is saved on this device/browser only (localStorage). Clearing Safari data will erase it.
       </div>
     </div>
