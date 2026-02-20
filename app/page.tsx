@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useState } from "react"
 
 const RULE_85 = 85
+const STORAGE_KEY = "alpha-macro-entries-v1"
 
 const CATEGORIES = [
   {
@@ -29,95 +30,120 @@ const CATEGORIES = [
   { title: "😴 Recovery", items: ["7+ hours sleep", "No binge eating", "Managed stress"] },
   {
     title: "🧠 Discipline",
-    items: [
-      "No liquid calories",
-      "No unplanned snacks",
-      "No emotional eating",
-      "Followed the plan",
-    ],
+    items: ["No liquid calories", "No unplanned snacks", "No emotional eating", "Followed the plan"],
   },
 ]
 
+type Checks = boolean[][]
+type Entries = Record<string, Checks>
+
+function todayISO() {
+  const d = new Date()
+  return d.toISOString().split("T")[0]
+}
+
+function blankChecks(): Checks {
+  return CATEGORIES.map((cat) => cat.items.map(() => false))
+}
+
+function calcPercent(checks: Checks) {
+  const all = checks.flat()
+  const total = all.length
+  const done = all.filter(Boolean).length
+  const percent = total ? Math.round((done / total) * 100) : 0
+  return { total, done, percent }
+}
+
 export default function Home() {
-  const [checks, setChecks] = useState<boolean[][]>(() =>
-    CATEGORIES.map((cat) => cat.items.map(() => false))
-  )
+  const [entries, setEntries] = useState<Entries>({})
+  const [selectedDate, setSelectedDate] = useState(todayISO())
 
   useEffect(() => {
-    const saved = localStorage.getItem("alpha-data")
+    const saved = localStorage.getItem(STORAGE_KEY)
     if (saved) {
       try {
-        setChecks(JSON.parse(saved))
-      } catch {
-        // ignore bad data
-      }
+        setEntries(JSON.parse(saved))
+      } catch {}
     }
   }, [])
 
   useEffect(() => {
-    localStorage.setItem("alpha-data", JSON.stringify(checks))
-  }, [checks])
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(entries))
+  }, [entries])
 
-  const { total, done, percent } = useMemo(() => {
-    const all = checks.flat()
-    const doneCount = all.filter(Boolean).length
-    return {
-      total: all.length,
-      done: doneCount,
-      percent: Math.round((doneCount / all.length) * 100),
-    }
-  }, [checks])
+  const checks = entries[selectedDate] ?? blankChecks()
+  const stats = calcPercent(checks)
+  const onTrack = stats.percent >= RULE_85
 
-  const toggle = (catIndex: number, itemIndex: number) => {
-    setChecks((prev) => {
-      const next = prev.map((row) => [...row])
-      next[catIndex][itemIndex] = !next[catIndex][itemIndex]
-      return next
-    })
+  function toggle(catIndex: number, itemIndex: number) {
+    const updated = checks.map((row, r) =>
+      row.map((val, c) => (r === catIndex && c === itemIndex ? !val : val))
+    )
+    setEntries((prev) => ({ ...prev, [selectedDate]: updated }))
   }
 
-  return (
-    <div style={{ padding: 24, maxWidth: 820, margin: "0 auto", fontFamily: "system-ui" }}>
-      <h1 style={{ fontSize: 28, marginBottom: 8 }}>🔥 Alpha Macro Daily Tracker</h1>
-      <p style={{ marginTop: 0, color: "#666" }}>
-        Consistency beats intensity • Protein is non-negotiable • Increase movement first
-      </p>
+  function resetDay() {
+    setEntries((prev) => ({ ...prev, [selectedDate]: blankChecks() }))
+  }
 
-      <div style={{ margin: "18px 0", padding: 14, border: "1px solid #ddd", borderRadius: 12 }}>
+  const weekDays = Array.from({ length: 7 }).map((_, i) => {
+    const d = new Date(selectedDate)
+    d.setDate(d.getDate() - (6 - i))
+    const iso = d.toISOString().split("T")[0]
+    const entry = entries[iso]
+    const percent = entry ? calcPercent(entry).percent : 0
+    return { iso, percent }
+  })
+
+  const logged = weekDays.filter((d) => entries[d.iso])
+  const avg =
+    logged.length > 0
+      ? Math.round(logged.reduce((sum, d) => sum + d.percent, 0) / logged.length)
+      : 0
+  const days85 = weekDays.filter((d) => d.percent >= RULE_85).length
+
+  return (
+    <div style={{ padding: 20, maxWidth: 900, margin: "0 auto", fontFamily: "system-ui" }}>
+      <h1>🔥 Alpha Macro Tracker</h1>
+
+      <div style={{ margin: "10px 0" }}>
         <strong>
-          {done}/{total} completed ({percent}%)
+          {stats.done}/{stats.total} completed ({stats.percent}%)
         </strong>
-        <div
-          style={{
-            padding: 10,
-            marginTop: 10,
-            borderRadius: 10,
-            background: percent >= RULE_85 ? "#d1fae5" : "#fef3c7",
-          }}
-        >
-          {percent >= RULE_85 ? "✅ On Track (85%+)" : "⚠️ Push to 85%"}
+        <div style={{ background: onTrack ? "#d1fae5" : "#fef3c7", padding: 8, marginTop: 6 }}>
+          {onTrack ? "On Track (85%+)" : "Push to 85%"}
         </div>
       </div>
 
+      <button onClick={resetDay} style={{ marginBottom: 10 }}>
+        Reset Day
+      </button>
+
       {CATEGORIES.map((cat, cIndex) => (
-        <div
-          key={cat.title}
-          style={{ marginBottom: 16, padding: 14, border: "1px solid #eee", borderRadius: 12 }}
-        >
-          <h3 style={{ margin: "0 0 10px 0" }}>{cat.title}</h3>
-          <div style={{ display: "grid", gap: 8 }}>
-            {cat.items.map((item, iIndex) => (
-              <label key={item} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-                <input
-                  type="checkbox"
-                  checked={checks[cIndex][iIndex]}
-                  onChange={() => toggle(cIndex, iIndex)}
-                  style={{ marginTop: 3 }}
-                />
-                <span>{item}</span>
-              </label>
-            ))}
-          </div>
+        <div key={cat.title} style={{ marginBottom: 15 }}>
+          <h3>{cat.title}</h3>
+          {cat.items.map((item, iIndex) => (
+            <label key={item} style={{ display: "block" }}>
+              <input
+                type="checkbox"
+                checked={checks[cIndex][iIndex]}
+                onChange={() => toggle(cIndex, iIndex)}
+              />
+              {item}
+            </label>
+          ))}
+        </div>
+      ))}
+
+      <hr style={{ margin: "30px 0" }} />
+
+      <h2>📊 Weekly Dashboard</h2>
+      <p>Average adherence: {avg}%</p>
+      <p>85%+ days: {days85}/7</p>
+
+      {weekDays.map((d) => (
+        <div key={d.iso} style={{ padding: 6 }}>
+          {d.iso} — {d.percent}%
         </div>
       ))}
     </div>
